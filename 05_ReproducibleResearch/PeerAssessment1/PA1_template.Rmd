@@ -1,0 +1,64 @@
+---
+title: 'Reproducible Research: Peer Assessment 1'
+output:
+  html_document:
+    keep_md: yes
+  pdf_document: default
+---
+<!---
+```{r simulation, echo=TRUE, results="show"}
+```
+-->
+
+
+## Loading and preprocessing the data
+```{r, echo=TRUE, cache=TRUE}
+data <- read.csv("activity.csv")
+```
+
+
+## What is mean total number of steps taken per day?
+```{r, echo=TRUE, cache=TRUE}
+date <- unique(data$date)
+day_total <- function(date){ sum(data[data$date == date, "steps"] )  }
+
+total_steps <- sapply(date, day_total) 
+df <- data.frame(date = date, total_steps = total_steps)
+df <- df[!is.na(df$total_steps),]
+hist(df$total_steps, main="Total number of steps per day",xlab="Number of steps", breaks=9, ylim=c(0,20))
+
+summary(df$total_steps)
+```
+
+## What is the average daily activity pattern?
+```{r, echo=TRUE, cache=TRUE}
+interval <- unique(data$interval)
+interval_mean <- function(int){ mean(data[data$interval == int, "steps"], na.rm=TRUE )  }
+int_mean <- sapply(interval, interval_mean)
+df_day <- data.frame(interval = interval, int_mean = int_mean)
+
+plot(int_mean~interval, type="l", main="Average daily activity pattern", ylab="Average steps per 5 min interval", xlab="Interval")
+```
+
+## Inputing missing values
+```{r, echo=TRUE, cache=TRUE}
+
+print(sum(is.na(data$steps)))
+
+# fill missing entries with mean for the 5 min interval
+# possible to do without for loop?
+data_fill <- data
+for(int in interval){
+          data_fill[is.na(data_fill[, "steps"] & data_fill$interval == int ), "steps" ] <- df_day[interval==int,"int_mean"]       
+}
+
+day_total_fill <- function(date){ sum(data_fill[data_fill$date == date, "steps"] )  }
+
+total_steps_fill <- sapply(date, day_total_fill) 
+df_fill <- data.frame(date = date, total_steps = total_steps_fill)
+hist(df_fill$total_steps, main="Total number of steps per day, filled data",xlab="Number of steps", breaks=9, ylim=c(0,25))
+
+summary(df_fill$total_steps)
+```
+
+## Are there differences in activity patterns between weekdays and weekends?
