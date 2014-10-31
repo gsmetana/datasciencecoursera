@@ -18,15 +18,16 @@ rankhospital <- function(state, outcome, num = "best") {
                           "heart failure" ="Hospital.30.Day.Death..Mortality..Rates.from.Heart.Failure", 
                           "heart attack" ="Hospital.30.Day.Death..Mortality..Rates.from.Heart.Attack" 
         )
-        data <-  data[state == data$State, c("Hospital.Name", outcome)]
-        data[, outcome] <- as.numeric(data[, outcome])   
-        data <- data[order(data[,outcome], data$Hospital.Name), ]
-        data <- data[!is.na(data[outcome]),]
-                
+        
+        # focus on data for given state
+        data[,outcome] <- as.numeric(data[, outcome])
+        sdata <-  data[!is.na(data[,outcome]) & state == data$State, c("Hospital.Name", outcome)]
+        
         if(num == "best"){
                 num <- 1
         } else if(num == "worst"){
-                num <- length(data$Hospital.Name)
-        }
-        data[num, "Hospital.Name"]
+                num <- length(sdata$Hospital.Name)
+        }               
+        sdata[order(sdata[, outcome], sdata[, "Hospital.Name"])[num], "Hospital.Name"]   
+        
 }
