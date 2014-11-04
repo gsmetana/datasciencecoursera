@@ -3,51 +3,49 @@
 
 -->
 
-
 ## Loading and preprocessing the data
 
 ```r
 data <- read.csv("activity.csv")
 ```
 
-
 ## What is mean total number of steps taken per day?
 
 ```r
-date <- unique(data$date)
-day_total <- function(date){ sum(data[data$date == date, "steps"] )  }
+library(plyr)
 
-total_steps <- sapply(date, day_total) 
-df <- data.frame(date = date, total_steps = total_steps)
-df <- df[!is.na(df$total_steps),]
-hist(df$total_steps, main="Total number of steps per day",xlab="Number of steps", breaks=9, ylim=c(0,20))
+dailyTotal <- ddply(data, .(date), function(x) {
+    totalSteps <- sum(x$steps)
+    data.frame(totalSteps = totalSteps)
+  })
+hist(dailyTotal$totalSteps, main="Total number of steps per day",xlab="Number of steps", breaks=9, ylim=c(0,20))
 ```
 
 ![](PA1_template_files/figure-html/unnamed-chunk-2-1.png) 
 
 ```r
-summary(df$total_steps)
+summary(dailyTotal$totalSteps)
 ```
 
 ```
-##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-##      41    8841   10760   10770   13290   21190
+##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's 
+##      41    8841   10760   10770   13290   21190       8
 ```
 
 ## What is the average daily activity pattern?
 
 ```r
-interval <- unique(data$interval)
-interval_mean <- function(int){ mean(data[data$interval == int, "steps"], na.rm=TRUE )  }
-int_mean <- sapply(interval, interval_mean)
-df_day <- data.frame(interval = interval, int_mean = int_mean)
+dailyMean <- ddply(data, .(interval), function(x) {
+    intervalMean <- mean(x$steps, na.rm=TRUE )
+    data.frame(intervalMean = intervalMean)
+  })
 
-plot(int_mean~interval, type="l", main="Average daily activity pattern", ylab="Average steps per 5 min interval", xlab="Interval")
+plot(dailyMean$intervalMean~dailyMean$interval, type="l", main="Average daily activity pattern", ylab="Average steps per 5 min interval", xlab="Interval")
 ```
 
 ![](PA1_template_files/figure-html/unnamed-chunk-3-1.png) 
 
-## Inputing missing values
+## Imputing missing values
 
 ```r
 print(sum(is.na(data$steps)))
@@ -58,24 +56,23 @@ print(sum(is.na(data$steps)))
 ```
 
 ```r
-# fill missing entries with mean for the 5 min interval
-# possible to do without for loop?
-data_fill <- data
-for(int in interval){
-          data_fill[is.na(data_fill[, "steps"] & data_fill$interval == int ), "steps" ] <- df_day[interval==int,"int_mean"]       
-}
+dataFill <- ddply(data, .(interval), function(x) {
+    steps <- replace(x$steps, is.na(x$steps), mean(x$steps, na.rm=TRUE ))
+    data.frame(date = x$date, steps = steps)
+  })
 
-day_total_fill <- function(date){ sum(data_fill[data_fill$date == date, "steps"] )  }
+dailyTotalFill <- ddply(dataFill, .(date), function(x) {
+    totalSteps <- sum(x$steps)
+    data.frame(totalSteps = totalSteps)
+  })
 
-total_steps_fill <- sapply(date, day_total_fill) 
-df_fill <- data.frame(date = date, total_steps = total_steps_fill)
-hist(df_fill$total_steps, main="Total number of steps per day, filled data",xlab="Number of steps", breaks=9, ylim=c(0,25))
+hist(dailyTotalFill$totalSteps, main="Total number of steps per day, filled data",xlab="Number of steps", breaks=9, ylim=c(0,25))
 ```
 
 ![](PA1_template_files/figure-html/unnamed-chunk-4-1.png) 
 
 ```r
-summary(df_fill$total_steps)
+summary(dailyTotalFill$totalSteps)
 ```
 
 ```
@@ -84,3 +81,21 @@ summary(df_fill$total_steps)
 ```
 
 ## Are there differences in activity patterns between weekdays and weekends?
+
+```r
+dataFill$day <- factor(as.numeric(weekdays(as.Date(dataFill$date)) %in% c("Saturday","Sunday")))
+levels(dataFill$day) <- c("weekday","weekend")
+
+wkdyTotalFill <- ddply(dataFill, .(day, interval), function(x) {
+    intervalMean <- mean(x$steps, na.rm=TRUE )
+    data.frame(intervalMean = intervalMean)
+  })
+
+library(lattice)
+xyplot(intervalMean ~ interval | day, data = wkdyTotalFill, 
+       layout = c(1,2), 
+       type="l",
+       ylab="Number of steps")
+```
+
+![](PA1_template_files/figure-html/unnamed-chunk-5-1.png) 
